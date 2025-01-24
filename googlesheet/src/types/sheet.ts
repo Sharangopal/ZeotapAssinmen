@@ -18,3 +18,11 @@ export interface CellData {
     columnWidths: { [key: string]: number };
     rowHeights: { [key: string]: number };
   }
+
+  export interface SheetState {
+    data: { [key: string]: CellData };
+    selectedCell: string | null;
+    selectedRange: string[];
+    columnWidths: { [key: string]: number };
+    rowHeights: { [key: string]: number };
+  }

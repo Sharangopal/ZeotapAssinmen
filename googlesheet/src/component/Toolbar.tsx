@@ -1,9 +1,9 @@
 import React from 'react';
-import { Bold, Italic, Type, Palette } from 'lucide-react';
+import { Bold, Italic, Type, Palette, Upload } from 'lucide-react';
 import { useSheetStore } from '../store/sheetStore';
 
 export const Toolbar: React.FC = () => {
-  const { selectedCell, data, updateCell } = useSheetStore();
+  const { selectedCell, data, updateCell, importCSV } = useSheetStore();
 
   const toggleStyle = (style: 'bold' | 'italic') => {
     if (!selectedCell) return;
@@ -14,6 +14,18 @@ export const Toolbar: React.FC = () => {
         [style]: !currentCell?.style[style]
       }
     });
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        importCSV(text);
+      };
+      reader.readAsText(file);
+    }
   };
 
   return (
@@ -60,6 +72,17 @@ export const Toolbar: React.FC = () => {
         }}
         className="w-8 h-8 p-1"
       />
+      <div className="h-6 w-px bg-gray-300 mx-2" />
+      <label className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+        <Upload size={18} />
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <span className="text-sm">Import CSV</span>
+      </label>
     </div>
   );
 };

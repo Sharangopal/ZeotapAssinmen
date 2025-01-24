@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import { CellData, SheetState } from '../types/sheet';
 import { evaluateFormula } from '../utils/formulas';
+import Papa from 'papaparse';
 
 interface SheetStore extends SheetState {
-  rowHeights: any;
-  columnWidths: any;
   updateCell: (id: string, data: Partial<CellData>) => void;
   setSelectedCell: (id: string | null) => void;
   setSelectedRange: (range: string[]) => void;
   updateColumnWidth: (column: string, width: number) => void;
   updateRowHeight: (row: string, height: number) => void;
+  importCSV: (csvContent: string) => void;
 }
 
 export const useSheetStore = create<SheetStore>((set, get) => ({
@@ -36,12 +36,25 @@ export const useSheetStore = create<SheetStore>((set, get) => ({
         updatedData.value = evaluateFormula(updatedData.formula, state.data);
       }
 
-      return {
+      // Update dependent cells
+      const newState = {
         data: {
           ...state.data,
           [id]: updatedData
         }
       };
+
+      // Find and update cells that depend on this cell
+      Object.entries(state.data).forEach(([cellId, cellData]) => {
+        if (cellData.formula?.includes(id)) {
+          newState.data[cellId] = {
+            ...cellData,
+            value: evaluateFormula(cellData.formula, newState.data)
+          };
+        }
+      });
+
+      return newState;
     });
   },
 
@@ -56,5 +69,24 @@ export const useSheetStore = create<SheetStore>((set, get) => ({
   updateRowHeight: (row, height) =>
     set((state) => ({
       rowHeights: { ...state.rowHeights, [row]: height }
-    }))
+    })),
+
+  importCSV: (csvContent) => {
+    Papa.parse(csvContent, {
+      complete: (results: { data: string[][]; }) => {
+        const newData: { [key: string]: CellData } = {};
+        results.data.forEach((row: string[], rowIndex) => {
+          row.forEach((cell, colIndex) => {
+            const cellId = `${String.fromCharCode(65 + colIndex)}${rowIndex + 1}`;
+            newData[cellId] = {
+              value: cell,
+              formula: cell,
+              style: { bold: false, italic: false, fontSize: 14, color: '#000000' }
+            };
+          });
+        });
+        set({ data: newData });
+      }
+    });
+  }
 }));

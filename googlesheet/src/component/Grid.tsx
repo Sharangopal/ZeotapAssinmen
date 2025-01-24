@@ -9,8 +9,10 @@ export const Grid: React.FC = () => {
   const {
     data,
     selectedCell,
+    selectedRange,
     updateCell,
     setSelectedCell,
+    setSelectedRange,
     columnWidths,
     rowHeights,
     updateRowHeight
@@ -18,13 +20,14 @@ export const Grid: React.FC = () => {
 
   const getCellId = (col: string, row: number) => `${col}${row}`;
   const cellRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const selectionStart = useRef<string | null>(null);
 
   const updateCellHeight = (cellId: string) => {
     const element = cellRefs.current[cellId];
     if (element) {
       const row = parseInt(cellId.replace(/[A-Z]/g, ''));
       const scrollHeight = element.scrollHeight;
-      if (scrollHeight > 32) { // 32px is the default height (h-8 = 2rem = 32px)
+      if (scrollHeight > 32) {
         updateRowHeight(row.toString(), scrollHeight);
       }
     }
@@ -35,6 +38,45 @@ export const Grid: React.FC = () => {
       updateCellHeight(selectedCell);
     }
   }, [selectedCell, data]);
+
+  const handleMouseDown = (cellId: string) => {
+    setSelectedCell(cellId);
+    selectionStart.current = cellId;
+    setSelectedRange([cellId]);
+  };
+
+  const handleMouseEnter = (cellId: string) => {
+    if (selectionStart.current) {
+      const range = getCellRange(selectionStart.current, cellId);
+      setSelectedRange(range);
+    }
+  };
+
+  const handleMouseUp = () => {
+    selectionStart.current = null;
+  };
+
+  const getCellRange = (start: string, end: string): string[] => {
+    const startCol = start.match(/[A-Z]+/)?.[0] || '';
+    const startRow = parseInt(start.match(/\d+/)?.[0] || '0');
+    const endCol = end.match(/[A-Z]+/)?.[0] || '';
+    const endRow = parseInt(end.match(/\d+/)?.[0] || '0');
+
+    const startColIndex = COLUMNS.indexOf(startCol);
+    const endColIndex = COLUMNS.indexOf(endCol);
+    const minCol = Math.min(startColIndex, endColIndex);
+    const maxCol = Math.max(startColIndex, endColIndex);
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+
+    const range: string[] = [];
+    for (let col = minCol; col <= maxCol; col++) {
+      for (let row = minRow; row <= maxRow; row++) {
+        range.push(`${COLUMNS[col]}${row}`);
+      }
+    }
+    return range;
+  };
 
   return (
     <div className="overflow-auto flex-1">
@@ -65,7 +107,8 @@ export const Grid: React.FC = () => {
               {COLUMNS.map(col => {
                 const cellId = getCellId(col, row);
                 const cellData = data[cellId];
-                const rowHeight = rowHeights[row] || 32; // Default to 32px (h-8)
+                const rowHeight = rowHeights[row] || 32;
+                const isSelected = selectedRange.includes(cellId);
 
                 return (
                   <div
@@ -73,7 +116,9 @@ export const Grid: React.FC = () => {
                     ref={el => cellRefs.current[cellId] = el}
                     className={clsx(
                       'border-b border-r px-2 outline-none',
-                      selectedCell === cellId ? 'bg-blue-50 min-h-[32px] whitespace-pre-wrap break-words' : 'overflow-hidden whitespace-nowrap text-ellipsis',
+                      isSelected ? 'bg-blue-50' : '',
+                      selectedCell === cellId ? 'ring-2 ring-blue-400' : '',
+                      'min-h-[32px] whitespace-pre-wrap break-words',
                       'transition-all duration-200'
                     )}
                     style={{
@@ -84,12 +129,12 @@ export const Grid: React.FC = () => {
                       height: `${rowHeight}px`,
                       minHeight: '32px'
                     }}
-                    onClick={() => setSelectedCell(cellId)}
+                    onMouseDown={() => handleMouseDown(cellId)}
+                    onMouseEnter={() => handleMouseEnter(cellId)}
+                    onMouseUp={handleMouseUp}
                     contentEditable
                     onInput={(e) => {
-                      if (selectedCell === cellId) {
-                        updateCellHeight(cellId);
-                      }
+                      updateCellHeight(cellId);
                     }}
                     onBlur={(e) => {
                       updateCell(cellId, {

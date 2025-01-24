@@ -2,6 +2,23 @@ import { CellData } from '../types/sheet';
 
 type FormulaFunction = (args: string[], data: { [key: string]: CellData }) => string;
 
+export interface FormulaSuggestion {
+  name: string;
+  params: string;
+  description: string;
+}
+
+export const formulaSuggestions: FormulaSuggestion[] = [
+  { name: 'SUM', params: '(cell1,cell2,...)', description: 'Calculates the sum of cells' },
+  { name: 'AVERAGE', params: '(cell1,cell2,...)', description: 'Calculates the average of cells' },
+  { name: 'MAX', params: '(cell1,cell2,...)', description: 'Returns the maximum value' },
+  { name: 'MIN', params: '(cell1,cell2,...)', description: 'Returns the minimum value' },
+  { name: 'COUNT', params: '(cell1,cell2,...)', description: 'Counts numeric cells' },
+  { name: 'TRIM', params: '(cell)', description: 'Removes whitespace' },
+  { name: 'UPPER', params: '(cell)', description: 'Converts to uppercase' },
+  { name: 'LOWER', params: '(cell)', description: 'Converts to lowercase' }
+];
+
 const formulaFunctions: { [key: string]: FormulaFunction } = {
   SUM: (args, data) => {
     const values = args.map(ref => parseFloat(data[ref]?.value || '0'));
